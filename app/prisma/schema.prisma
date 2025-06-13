@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum UserRoleEnum {
+  ADMIN
+  MANAGER
+  TEACHER
+  STUDENT
+  SELLER
+}
+
+enum SexEnum {
+  MALE
+  FEMALE
+}
+
+enum FileType {
+  IMAGE
+  VIDEO
+  AUDIO
+  PDF
+  DOCUMENT
+}
+
+enum FileAccessibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SINGLE_CHOICE
+  ESSAY
+  TRUE_FALSE
+  FILL_IN_THE_BLANK
+  SHORT_ANSWER
+  LONG_ANSWER
+  MATCHING
+  ORDERING
+  DRAG_AND_DROP
+  DROPDOWN
+}
+
+// MODELS
+
+model User {
+  id                   Int                  @id @default(autoincrement())
+  firebaseUid          String               @unique
+  email                String               @unique
+  username             String               @unique
+  firstName            String?
+  lastName             String?
+  profileImage         String?
+  birthDate            DateTime?
+  sex                  SexEnum?
+  firstConnection      Boolean              @default(true)
+  archive              Boolean              @default(false)
+  status               UserStatus           @default(ACTIVE)
+  onboardingStep       Int                  @default(0)
+
+  roleId               Int
+  role                 UserRole             @relation(fields: [roleId], references: [id])
+
+  languageSpecialityId Int?
+  languageSpeciality   LanguageSpeciality?  @relation(fields: [languageSpecialityId], references: [id], onDelete: SetNull)
+
+  levelId              Int?
+  level                Level?               @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
+  evaluations          EvaluationAttempt[]
+  files                File[]
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+}
+
+model UserRole {
+  id    Int          @id @default(autoincrement())
+  role  UserRoleEnum @unique
+  users User[]
+}
+
+model Language {
+  id                   Int                  @id @default(autoincrement())
+  name                 String               @unique
+  languageSpecialities LanguageSpeciality[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+}
+
+model LanguageSpeciality {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  languageId Int
+  language   Language @relation(fields: [languageId], references: [id])
+  levels     Level[]
+  users      User[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Level {
+  id                   Int                  @id @default(autoincrement())
+  name                 String
+  shortName            String
+  description          String?              @db.Text
+  languageSpecialityId Int
+  languageSpeciality   LanguageSpeciality   @relation(fields: [languageSpecialityId], references: [id])
+  users                User[]
+  evaluations          Evaluation[]
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+}
+
+model Evaluation {
+  id         Int                 @id @default(autoincrement())
+  title      String
+  type       String
+  levelId    Int?
+  level      Level?              @relation(fields: [levelId], references: [id])
+  questions  Question[]
+  attempts   EvaluationAttempt[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+}
+
+model Question {
+  id            Int                @id @default(autoincrement())
+  text          String
+  instruction   String?
+  type          QuestionType
+  coefficient   Float              @default(1.0)
+  evaluationId  Int?
+  evaluation    Evaluation?        @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  files         File[]
+  answers       Answer[]
+  userResponses UserResponse[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model Answer {
+  id            Int            @id @default(autoincrement())
+  text          String
+  isCorrect     Boolean        @default(false)
+  questionId    Int
+  question      Question       @relation(fields: [questionId], references: [id])
+  feedbacks     Feedback[]
+  userResponses UserResponse[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Feedback {
+  id         Int      @id @default(autoincrement())
+  text       String
+  isPositive Boolean
+  answerId   Int
+  answer     Answer   @relation(fields: [answerId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model EvaluationAttempt {
+  id           Int            @id @default(autoincrement())
+  userId       Int
+  user         User           @relation(fields: [userId], references: [id])
+  evaluationId Int
+  evaluation   Evaluation     @relation(fields: [evaluationId], references: [id])
+  totalScore   Decimal        @default(0.0)
+  completedAt  DateTime       @default(now())
+  responses    UserResponse[]
+  createdAt    DateTime       @default(now())
+}
+
+model UserResponse {
+  id           Int               @id @default(autoincrement())
+  attemptId    Int
+  attempt      EvaluationAttempt @relation(fields: [attemptId], references: [id])
+  questionId   Int
+  question     Question          @relation(fields: [questionId], references: [id])
+  answerId     Int?
+  answer       Answer?           @relation(fields: [answerId], references: [id])
+  score        Decimal           @default(0.0)
+  feedbackText String?
+  createdAt    DateTime          @default(now())
+}
+
+model File {
+  id            Int                @id @default(autoincrement())
+  filename      String
+  originalName  String
+  mimeType      String
+  size          Int
+  path          String
+  type          FileType
+  accessibility FileAccessibility
+
+  questionId    Int?
+  question      Question?          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  userId        Int?
+  user          User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+

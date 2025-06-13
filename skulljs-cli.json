@@ -1,0 +1,11 @@
+{
+	"cli_version": "1.8.0",
+  "projects": {
+    "backend": {
+      "path": "app",
+      "skulljs_repository": "nestjs",
+			"cli" : {"alias":"nest","path":"@nestjs/cli/bin/nest.js"},
+      "version": "11.0.0"
+    }
+  }
+}
